@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokédex</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080810;
+  --surface:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.08);
+  --text:#f0f0ff;
+  --muted:rgba(240,240,255,0.4);
+  --accent:#e8ff47;
+}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.6}
+
+#hero{position:relative;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+#hero::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 60%, rgba(232,255,71,0.06) 0%, transparent 70%);pointer-events:none}
+.hero-label{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:12px;opacity:0;animation:fadeUp 0.8s 0.2s forwards}
+.hero-label2{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:12px;opacity:0;animation:fadeUp 0.8s 0.2s forwards; z-index:-100}
+.hero-title{font-size:clamp(48px,8vw,96px);font-weight:800;line-height:0.9;text-align:center;margin-bottom:8px;opacity:0;animation:fadeUp 0.8s 0.35s forwards}
+.hero-title span{color:var(--accent)}
+.hero-sub{font-size:14px;color:var(--muted);margin-bottom:60px;font-weight:400;letter-spacing:0.5px;opacity:0;animation:fadeUp 0.8s 0.5s forwards}
+.carousel-wrap{position:relative;width:100%;height:280px;opacity:0;animation:fadeUp 1s 0.7s forwards}
+.slider{position:absolute;width:140px;height:190px;top:0;left:calc(50% - 70px);transform-style:preserve-3d;animation:spin 40s linear infinite}
+.slider:hover{animation-play-state:paused}
+@keyframes spin{from{transform:perspective(1200px) rotateY(0deg)}to{transform:perspective(1200px) rotateY(360deg)}}
+.item{position:absolute;inset:0;transform:rotateY(calc((var(--position) - 1) * (360deg / var(--quantity)))) translateZ(480px);cursor:pointer;opacity:1}
+.item-card{width:140px;height:190px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:16px;backdrop-filter:blur(12px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:background 0.3s,border-color 0.3s;position:relative;overflow:hidden}
+.item-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.06) 0%,transparent 60%);border-radius:inherit}
+.item-card:hover{background:rgba(232,255,71,0.08);border-color:rgba(232,255,71,0.3)}
+.item-card img{width:100px;height:100px;image-rendering:pixelated;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.6));transition:transform 0.3s}
+.item-card:hover img{transform:translateY(-4px) scale(1.05)}
+.item-name{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text);opacity:0.9}
+.item-num{font-size:10px;color:var(--accent);font-family:'DM Mono',monospace}
+.scroll-cue{position:absolute;bottom:32px;display:flex;flex-direction:column;align-items:center;gap:6px;opacity:0;animation:fadeUp 0.8s 1.2s forwards}
+.scroll-cue span{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace}
+.scroll-line{width:1px;height:40px;background:linear-gradient(to bottom,var(--muted),transparent);animation:scrollLine 1.5s ease-in-out infinite}
+@keyframes scrollLine{0%,100%{transform:scaleY(1);opacity:0.4}50%{transform:scaleY(0.6);opacity:1}}
+
+#main{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:60px 24px 80px}
+.section-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:32px;gap:16px;flex-wrap:wrap}
+.section-title{font-size:32px;font-weight:800;line-height:1}
+.section-title span{color:var(--accent)}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative}
+.search-wrap input{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 16px 10px 40px;font-size:13px;font-family:'Syne',sans-serif;outline:none;width:220px;transition:border-color 0.2s,background 0.2s}
+.search-wrap input:focus{border-color:rgba(232,255,71,0.4);background:rgba(232,255,71,0.04)}
+.search-wrap input::placeholder{color:var(--muted)}
+.search-wrap::before{content:'⌕';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px;pointer-events:none}
+select{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:13px;font-family:'Syne',sans-serif;outline:none;cursor:pointer;transition:border-color 0.2s}
+select:focus{border-color:rgba(232,255,71,0.4)}
+select option{background:#12121e}
+.region-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:28px}
+.rpill{padding:6px 14px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;background:var(--surface);border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all 0.2s}
+.rpill:hover{color:var(--text);border-color:rgba(255,255,255,0.2)}
+.rpill.active{background:var(--accent);color:#000;border-color:var(--accent)}
+#counter{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:20px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.pcard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 12px 12px;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;overflow:hidden}
+.pcard::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.03) 0%,transparent 50%);border-radius:inherit;pointer-events:none}
+.pcard:hover{transform:translateY(-4px);border-color:rgba(255,255,255,0.18);background:rgba(255,255,255,0.07);box-shadow:0 12px 40px rgba(0,0,0,0.4)}
+.pcard-bg{position:absolute;inset:0;opacity:0.07;border-radius:inherit;transition:opacity 0.2s}
+.pcard:hover .pcard-bg{opacity:0.12}
+.pcard img{width:80px;height:80px;image-rendering:pixelated;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.5));position:relative;z-index:1;transition:transform 0.2s}
+.pcard:hover img{transform:translateY(-3px)}
+.pcard-num{font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;letter-spacing:1px;position:relative;z-index:1}
+.pcard-name{font-size:12px;font-weight:700;text-transform:capitalize;letter-spacing:0.3px;position:relative;z-index:1;text-align:center}
+.pcard-types{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1}
+.tbadge{font-size:9px;font-weight:600;letter-spacing:0.5px;padding:2px 8px;border-radius:999px;text-transform:uppercase}
+
+#modal-wrap{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
+#modal-wrap.open{display:flex}
+#modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);cursor:pointer}
+#modal{position:relative;z-index:1;width:100%;max-width:520px;background:rgba(12,12,24,0.97);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:32px;box-shadow:0 32px 80px rgba(0,0,0,0.7);animation:modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes modalIn{from{transform:scale(0.9) translateY(16px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+#modal-close{position:absolute;top:16px;right:16px;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+#modal-close:hover{color:var(--text);border-color:rgba(255,255,255,0.2)}
+.modal-header{display:flex;gap:20px;align-items:flex-start;margin-bottom:24px}
+#modal-img{width:120px;height:120px;image-rendering:pixelated;filter:drop-shadow(0 8px 20px rgba(0,0,0,0.6));flex-shrink:0}
+.modal-meta{flex:1}
+#modal-num{font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;letter-spacing:2px;margin-bottom:4px}
+#modal-name{font-size:28px;font-weight:800;text-transform:capitalize;line-height:1;margin-bottom:10px}
+#modal-types{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.modal-specs{display:flex;gap:16px;font-size:12px;color:var(--muted)}
+.modal-specs span{color:var(--text);font-weight:600}
+#modal-stats{margin-bottom:20px}
+.stat-row{margin-bottom:8px}
+.stat-top{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;font-family:'DM Mono',monospace}
+.stat-top .sname{color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+.stat-top .sval{color:var(--text);font-weight:500}
+.stat-track{height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden}
+.stat-fill{height:100%;border-radius:2px;transition:width 0.6s cubic-bezier(0.34,1.1,0.64,1)}
+.modal-abilities{font-size:12px;color:var(--muted)}
+.modal-abilities strong{color:var(--text);font-size:11px;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:6px}
+.ability-pills{display:flex;gap:6px;flex-wrap:wrap}
+.ability-pill{padding:4px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-size:11px;text-transform:capitalize;color:var(--text)}
+
+#loading{min-height:300px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.pokeball-loader{width:48px;height:48px;border-radius:50%;background:conic-gradient(#ff4d6d 0 180deg,white 180deg 360deg);position:relative;animation:spin2 0.8s linear infinite;border:3px solid #080810}
+@keyframes spin2{to{transform:rotate(360deg)}}
+.pokeball-loader::after{content:'';position:absolute;inset:0;border-radius:50%;border:3px solid #080810;background:radial-gradient(circle,#080810 0%,transparent 30%)}
+#loading p{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.no-results{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+
+<section id="hero">
+  <p class="hero-label">National Pokédex</p>
+  <h1 class="hero-title">All <span>1025</span><br>Pokémon</h1>
+  <p class="hero-sub">Every species. Every region. Every form.</p>
+  <p class="hero-label2"><strong>3D Carousel Refreshes every 15 seconds</strong></p>
+  <div class="carousel-wrap">
+    <div class="slider" id="carousel" style="--quantity:12"></div>
+  </div>
+  <div class="scroll-cue">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<section id="main">
+  <div class="section-header">
+    <h2 class="section-title">Browse <span>All</span></h2>
+    <div class="filters">
+      <div class="search-wrap">
+        <input type="text" id="search-input" placeholder="Name or number…" />
+      </div>
+      <select id="type-filter">
+        <option value="">All types</option>
+      </select>
+      <select id="sort-select">
+        <option value="id">By number</option>
+        <option value="name">By name</option>
+        <option value="hp">By HP</option>
+        <option value="atk">By Attack</option>
+        <option value="spd">By Speed</option>
+      </select>
+    </div>
+  </div>
+  <div class="region-pills" id="region-pills"></div>
+  <p id="counter"></p>
+  <div id="grid">
+    <div id="loading">
+      <div class="pokeball-loader"></div>
+      <p>Loading Pokédex…</p>
+    </div>
+  </div>
+</section>
+
+<div id="modal-wrap">
+  <div id="modal-backdrop"></div>
+  <div id="modal">
+    <button id="modal-close">✕</button>
+    <div class="modal-header">
+      <img id="modal-img" src="" alt="">
+      <div class="modal-meta">
+        <p id="modal-num"></p>
+        <h3 id="modal-name"></h3>
+        <div id="modal-types"></div>
+        <div class="modal-specs" id="modal-specs"></div>
+      </div>
+    </div>
+    <div id="modal-stats"></div>
+    <div class="modal-abilities" id="modal-abilities"></div>
+  </div>
+</div>
+
+<script>
+const TYPE_COLORS={
+  normal:{bg:'#6d6d4e',t:'#fff'},fire:{bg:'#9c3100',t:'#ffd6b8'},
+  water:{bg:'#0a3a6e',t:'#a8d4ff'},electric:{bg:'#7a6200',t:'#ffe97a'},
+  grass:{bg:'#1a5c1a',t:'#a8f0a8'},ice:{bg:'#1a5c6e',t:'#b8f0f0'},
+  fighting:{bg:'#7a1a1a',t:'#ffb0b0'},poison:{bg:'#4a1a6e',t:'#e0b0ff'},
+  ground:{bg:'#6e4a00',t:'#ffe0a0'},flying:{bg:'#3a2a7a',t:'#c8b8ff'},
+  psychic:{bg:'#7a1a4a',t:'#ffb0d0'},bug:{bg:'#3a5c00',t:'#c8e870'},
+  rock:{bg:'#5c4a1a',t:'#e0c870'},ghost:{bg:'#2a1a5c',t:'#c0a8f0'},
+  dragon:{bg:'#1a1a9c',t:'#a0a8ff'},dark:{bg:'#2a1a0a',t:'#d0b898'},
+  steel:{bg:'#3a4a5c',t:'#c0d0e0'},fairy:{bg:'#7a1a4a',t:'#ffb0d8'},
+  stellar:{bg:'#005c5c',t:'#a0f0f0'},unknown:{bg:'#2a4a3a',t:'#a0d0b8'}
+};
+const TYPE_BG={
+  normal:'#A8A878',fire:'#F08030',water:'#6890F0',electric:'#F8D030',
+  grass:'#78C850',ice:'#98D8D8',fighting:'#C03028',poison:'#A040A0',
+  ground:'#E0C068',flying:'#A890F0',psychic:'#F85888',bug:'#A8B820',
+  rock:'#B8A038',ghost:'#705898',dragon:'#7038F8',dark:'#705848',
+  steel:'#B8B8D0',fairy:'#EE99AC',stellar:'#40B5A5',unknown:'#68A090'
+};
+const STAT_COL={hp:'#ff5959',attack:'#ff944d',defense:'#ffd44d','special-attack':'#7ab4ff','special-defense':'#78e07c',speed:'#ff85b3'};
+const STAT_NAMES={hp:'HP',attack:'Atk',defense:'Def','special-attack':'SpA','special-defense':'SpD',speed:'Spd'};
+const REGIONS=[
+  {n:'All',s:0,e:9999},{n:'Kanto',s:1,e:151},{n:'Johto',s:152,e:251},
+  {n:'Hoenn',s:252,e:386},{n:'Sinnoh',s:387,e:493},{n:'Unova',s:494,e:649},
+  {n:'Kalos',s:650,e:721},{n:'Alola',s:722,e:809},{n:'Galar',s:810,e:905},{n:'Paldea',s:906,e:1025}
+];
+const CAROUSEL_SIZE = 12;
+const SPIN_DURATION = 15; // seconds per full rotation
+
+let all=[], filtered=[], cache={}, currentRegion='All';
+let carouselPool=[], carouselCurrent=[];
+
+const sprite=id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+const art=id=>`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+
+async function fetchAll(){
+  const r=await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025');
+  const d=await r.json();
+  return d.results.map((p,i)=>({id:i+1,name:p.name}));
+}
+
+async function fetchDetail(id){
+  if(cache[id])return cache[id];
+  const r=await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+  const d=await r.json();
+  cache[id]=d;
+  return d;
+}
+
+function pickRandomIds(exclude, count){
+  const pool=all.map(p=>p.id).filter(id=>!exclude.includes(id));
+  const shuffled=pool.sort(()=>Math.random()-0.5);
+  return shuffled.slice(0,count);
+}
+
+function buildCarouselItems(ids){
+  const c=document.getElementById('carousel');
+  c.style.setProperty('--quantity',ids.length);
+  c.innerHTML='';
+  ids.forEach((id,i)=>{
+    const name=all.find(p=>p.id===id)?.name||'';
+    const el=document.createElement('div');
+    el.className='item';
+    el.style.setProperty('--position',i+1);
+    el.innerHTML=`<div class="item-card" onclick="openModal(${id})">
+      <img src="${art(id)}" alt="${name}" onerror="this.src='${sprite(id)}'">
+      <div class="item-name">${name}</div>
+      <div class="item-num">#${String(id).padStart(3,'0')}</div>
+    </div>`;
+    c.appendChild(el);
+  });
+  carouselCurrent=ids;
+}
+
+function swapCarouselCards(){
+  const c=document.getElementById('carousel');
+  const items=c.querySelectorAll('.item');
+  const newIds=pickRandomIds([],CAROUSEL_SIZE);
+
+  // fade out all cards
+  items.forEach(item=>{
+    item.style.transition='opacity 0.6s ease';
+    item.style.opacity='0';
+  });
+
+  setTimeout(()=>{
+    buildCarouselItems(newIds);
+    // fade in
+    const newItems=c.querySelectorAll('.item');
+    newItems.forEach(item=>{
+      item.style.opacity='0';
+      item.style.transition='opacity 0.6s ease';
+    });
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        newItems.forEach(item=>{ item.style.opacity='1'; });
+      });
+    });
+  }, 650);
+}
+
+function buildCarousel(){
+  const initialIds=pickRandomIds([],CAROUSEL_SIZE);
+  buildCarouselItems(initialIds);
+  // swap every full rotation
+  setInterval(swapCarouselCards, SPIN_DURATION * 1000);
+}
+
+function buildFilters(){
+  const sel=document.getElementById('type-filter');
+  ['normal','fire','water','electric','grass','ice','fighting','poison','ground','flying','psychic','bug','rock','ghost','dragon','dark','steel','fairy'].forEach(t=>{
+    const o=document.createElement('option');
+    o.value=t;o.textContent=t[0].toUpperCase()+t.slice(1);
+    sel.appendChild(o);
+  });
+  const pills=document.getElementById('region-pills');
+  REGIONS.forEach(r=>{
+    const b=document.createElement('button');
+    b.className='rpill'+(r.n==='All'?' active':'');
+    b.textContent=r.n;
+    b.onclick=()=>{currentRegion=r.n;document.querySelectorAll('.rpill').forEach(x=>x.classList.remove('active'));b.classList.add('active');applyFilters()};
+    pills.appendChild(b);
+  });
+}
+
+function applyFilters(){
+  const q=document.getElementById('search-input').value.toLowerCase().trim();
+  const t=document.getElementById('type-filter').value;
+  const sort=document.getElementById('sort-select').value;
+  const reg=REGIONS.find(r=>r.n===currentRegion);
+  filtered=all.filter(p=>{
+    if(p.id<reg.s||p.id>reg.e)return false;
+    if(q&&!p.name.includes(q)&&!String(p.id).includes(q))return false;
+    if(t&&p.types&&!p.types.includes(t))return false;
+    return true;
+  });
+  if(sort==='name')filtered.sort((a,b)=>a.name.localeCompare(b.name));
+  else if(sort==='hp')filtered.sort((a,b)=>(b.hp||0)-(a.hp||0));
+  else if(sort==='atk')filtered.sort((a,b)=>(b.atk||0)-(a.atk||0));
+  else if(sort==='spd')filtered.sort((a,b)=>(b.spd||0)-(a.spd||0));
+  else filtered.sort((a,b)=>a.id-b.id);
+  renderGrid();
+}
+
+function typeBadge(t){
+  const c=TYPE_COLORS[t]||{bg:'#333',t:'#fff'};
+  return `<span class="tbadge" style="background:${c.bg};color:${c.t}">${t}</span>`;
+}
+
+function renderGrid(){
+  const grid=document.getElementById('grid');
+  document.getElementById('counter').textContent=`${filtered.length} Pokémon`;
+  if(!filtered.length){grid.innerHTML='<div class="no-results">No Pokémon found</div>';return}
+  grid.innerHTML=filtered.map(p=>{
+    const types=p.types||[];
+    const bg=types[0]?TYPE_BG[types[0]]:'#888';
+    return `<div class="pcard" onclick="openModal(${p.id})">
+      <div class="pcard-bg" style="background:radial-gradient(circle at 70% 30%,${bg} 0%,transparent 70%)"></div>
+      <div class="pcard-num">#${String(p.id).padStart(4,'0')}</div>
+      <img src="${sprite(p.id)}" alt="${p.name}" loading="lazy">
+      <div class="pcard-name">${p.name}</div>
+      <div class="pcard-types">${types.map(typeBadge).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+async function openModal(id){
+  const mw=document.getElementById('modal-wrap');
+  mw.classList.add('open');
+  document.getElementById('modal-img').src='';
+  document.getElementById('modal-name').textContent='Loading…';
+  ['modal-num','modal-types','modal-stats','modal-abilities','modal-specs'].forEach(x=>document.getElementById(x).innerHTML='');
+  const d=await fetchDetail(id);
+  document.getElementById('modal-img').src=d.sprites.other?.['official-artwork']?.front_default||sprite(id);
+  document.getElementById('modal-name').textContent=d.name;
+  document.getElementById('modal-num').textContent='#'+String(d.id).padStart(4,'0');
+  const types=d.types.map(t=>t.type.name);
+  document.getElementById('modal-types').innerHTML=types.map(typeBadge).join('');
+  document.getElementById('modal-specs').innerHTML=`
+    <div>${(d.height/10).toFixed(1)}m <span>Height</span></div>
+    <div>${(d.weight/10).toFixed(1)}kg <span>Weight</span></div>
+    <div>${d.base_experience||'—'} <span>Base EXP</span></div>`;
+  document.getElementById('modal-stats').innerHTML=d.stats.map(s=>{
+    const pct=Math.min(100,Math.round(s.base_stat/255*100));
+    const col=STAT_COL[s.stat.name]||'#888';
+    return `<div class="stat-row">
+      <div class="stat-top"><span class="sname">${STAT_NAMES[s.stat.name]||s.stat.name}</span><span class="sval">${s.base_stat}</span></div>
+      <div class="stat-track"><div class="stat-fill" style="width:${pct}%;background:${col}"></div></div>
+    </div>`;
+  }).join('');
+  const abilities=d.abilities.map(a=>a.ability.name);
+  document.getElementById('modal-abilities').innerHTML=`<strong>Abilities</strong><div class="ability-pills">${abilities.map(a=>`<span class="ability-pill">${a}</span>`).join('')}</div>`;
+}
+
+function closeModal(){document.getElementById('modal-wrap').classList.remove('open')}
+document.getElementById('modal-backdrop').onclick=closeModal;
+document.getElementById('modal-close').onclick=closeModal;
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+async function loadChunk(pokemon){
+  const BATCH=30;
+  for(let i=0;i<pokemon.length;i+=BATCH){
+    await Promise.all(pokemon.slice(i,i+BATCH).map(async p=>{
+      try{
+        const d=await fetchDetail(p.id);
+        p.types=d.types.map(t=>t.type.name);
+        p.hp=d.stats.find(s=>s.stat.name==='hp')?.base_stat||0;
+        p.atk=d.stats.find(s=>s.stat.name==='attack')?.base_stat||0;
+        p.spd=d.stats.find(s=>s.stat.name==='speed')?.base_stat||0;
+      }catch(e){}
+    }));
+    if(i===0)applyFilters();
+  }
+  applyFilters();
+}
+
+async function init(){
+  all=await fetchAll();
+  filtered=[...all];
+  buildFilters();
+  buildCarousel();
+  document.getElementById('grid').innerHTML='';
+  applyFilters();
+  document.getElementById('search-input').addEventListener('input',applyFilters);
+  document.getElementById('type-filter').addEventListener('change',applyFilters);
+  document.getElementById('sort-select').addEventListener('change',applyFilters);
+  loadChunk(all.slice(0,151)).then(()=>loadChunk(all.slice(151)));
+}
+
+init();
+</script>
+</body>
+</html>
